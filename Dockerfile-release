@@ -1,0 +1,18 @@
+FROM rust:1.38.0 as build
+
+RUN apt-get update && apt-get -y install ca-certificates cmake musl-tools libssl-dev && rm -rf /var/lib/apt/lists/*
+RUN rustup target add x86_64-unknown-linux-musl
+
+ENV PKG_CONFIG_ALLOW_CROSS=1
+RUN USER=root cargo new --name actix_web_demo /usr/src/app
+WORKDIR /usr/src/app
+COPY Cargo.toml Cargo.lock ./
+RUN cargo build --target x86_64-unknown-linux-musl --release
+RUN rm -rf src
+
+COPY src src
+RUN cargo build --target x86_64-unknown-linux-musl --release
+
+FROM alpine:3.8
+COPY --from=build /usr/src/app/target/x86_64-unknown-linux-musl/release/actix_web_demo /bin
+CMD ["actix_web_demo"]
